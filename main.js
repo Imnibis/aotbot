@@ -15,7 +15,7 @@ console.log("|                                                         Un bot d'
 console.log("`----------------------------------------------------------------------------´");
 
 console.log("Initialisation de l'API Twitter...");
-var Twitter = require('twitter');
+var Twitter = require('twitter-lite');
 var client = new Twitter({
     consumer_key: process.env.TWITTER_CONSUMER_KEY,
     consumer_secret: process.env.TWITTER_CONSUMER_SECRET,
@@ -25,28 +25,47 @@ var client = new Twitter({
 console.log("FAIT!");
 
 console.log("Récupération des comptes que le bot follow...");
-client.get("friends/ids", {screen_name: "AlexOTimeBot"}, (err, data, resp) => {
-    if (!err) {
-        console.log("FAIT!");
-        start_bot(data.ids);
-    } else console.log(err);
-});
+client.get("friends/ids", {screen_name: "AlexOTimeBot"})
+    .then(data => {
+    console.log("FAIT!");
+    start_bot(data.ids);
+}).catch(console.error);
 
-function start_bot(followed_ids) {
+function start_bot(followed_ids)
+{
     console.log("En attente de tweets...");
-    client.stream("statuses/filter", {follow: followed_ids.join(",")}, stream => {
-        stream.on("data", tweet => {
-            if (tweet.in_reply_to_status_id == null &&
-                    tweet.user.screen_name == "imnibis") {
-                console.log("----------");
-                console.log(`Tweet reçu: "${tweet.text}"`);
-                client.post("statuses/update", {status: "@imnibis Tu gères sa race",
-                    in_reply_to_status_id: tweet.id_str}, (error, data, response) => {
-                    if (!error) console.log("Réponse postée!");
-                    else console.log(error);
-                });
-            }
-        });
-        stream.on("error", error => console.log(error));
-    });
+    client.stream("statuses/filter", {follow: followed_ids.join(",")})
+        .on("data", on_tweet)
+        .on("error", console.error);
+}
+
+function on_tweet(tweet)
+{
+    if(tweet.text.startsWith("RT")) return;
+    console.log("----------");
+    console.log(`Tweet reçu: "${tweet.text}"`);
+    if (tweet.in_reply_to_status_id == null &&
+            tweet.user.screen_name == "imnibis") {
+        client.post("favorites/create", {id: tweet.id_str})
+            .then(data => console.log("Tweet autoliké!"))
+            .catch(console.error);
+    } else search_tweet(tweet);
+}
+
+function search_tweet(tweet)
+{
+    console.log("Recherche du tweet...");
+    client.post("tweets/search/fullarchive/dev",
+        {query: "" + tweet.text.substring(0, 256)})
+        .then(data =>
+    {
+        console.log("Trouvé! Réponse en cours...");
+        var source = data.results[data.results.length - 1];
+        client.post("statuses/update", {status:
+            `@${tweet.user.screen_name} Voler c'est pas bien.`,
+            in_reply_to_status_id: tweet.id_str,
+            attachment_url: `https://twitter.com/${source.user.screen_name}/status/${source.id_str}`})
+            .then((error, data, response) => console.log("Réponse postée!"))
+            .catch(console.error);
+    }).catch(console.error);
 }
