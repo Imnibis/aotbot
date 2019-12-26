@@ -44,12 +44,11 @@ function on_tweet(tweet)
     if(tweet.text.startsWith("RT")) return;
     console.log("----------");
     console.log(`Tweet reçu: "${tweet.text}"`);
-    if (tweet.in_reply_to_status_id == null &&
-            tweet.user.screen_name == "imnibis") {
+    if (tweet.user.screen_name == "imnibis") {
         client.post("favorites/create", {id: tweet.id_str})
             .then(data => console.log("Tweet autoliké!"))
             .catch(console.error);
-    } else search_tweet(tweet);
+    } else if(tweet.in_reply_to_status_id == null) search_tweet(tweet);
 }
 
 function search_tweet(tweet)
