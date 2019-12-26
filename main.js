@@ -41,9 +41,10 @@ function start_bot(followed_ids)
 
 function on_tweet(tweet)
 {
+    if (tweet.truncated) tweet.text = tweet.extended_tweet.full_text;
     if(tweet.text.startsWith("RT")) return;
     console.log("----------");
-    console.log(`Tweet reçu: "${tweet.extended_tweet.full_text}"`);
+    console.log(`Tweet reçu: "${tweet.text}"`);
     if (tweet.user.screen_name == "imnibis") {
         client.post("favorites/create", {id: tweet.id_str})
             .then(data => console.log("Tweet autoliké!"))
@@ -56,7 +57,7 @@ function search_tweet(tweet)
 {
     console.log("Recherche du tweet...");
     client.post("tweets/search/fullarchive/dev",
-        {query: "" + tweet.extended_tweet.full_text.substring(0, 128)})
+        {query: "" + tweet.text.substring(0, 128)})
         .then(data =>
     {
         console.log("Trouvé! Réponse en cours...");
